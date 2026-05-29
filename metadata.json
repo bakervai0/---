@@ -1,0 +1,6 @@
+{
+  "name": "StockSense AI",
+  "description": "AI-powered dark store & e-comm inventory optimizer for Bangladesh, India, and Pakistan. Stock predictions, alerts, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,45 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Sophisticated background accent glow -->
+    <path
+        android:fillColor="#156366F1"
+        android:pathData="M54,54m-36,0a36,36 0,1 1,72 0a36,36 0,1 1,-72 0" />
+
+    <!-- 3 Bar columns depicting e-commerce inventory levels -->
+    <path
+        android:strokeColor="#818CF8"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M35,75 L35,62" />
+        
+    <path
+        android:strokeColor="#6366F1"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M54,75 L54,48" />
+
+    <path
+        android:strokeColor="#10B981"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M73,75 L73,38" />
+
+    <!-- Bold trending up-right optimization arrow (StockSense optimizer vector) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M30,38 L45,52 L60,42 L78,57" />
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M70,57 L78,57 L78,49" />
+</vector>
