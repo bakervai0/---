@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Texture Forge</title>
+  <meta name="description" content="Procedural high-resolution background and texture generator for microstock. Pure math — no AI.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 6h24L16 28z' fill='%23ff7a1a'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 5h26L16 29z" fill="var(--accent)"/><path d="M10 9h12l-6 11z" fill="var(--bg)"/></svg>
+      <span>TEXTURE<b>FORGE</b></span>
+    </div>
+    <p class="eyebrow">Procedural raster texture generator</p>
+    <h1>BG <em>GENERATE</em></h1>
+    <p class="lede">High-resolution backgrounds for microstock — grunge, concrete, leather, wood, marble and more. Every pixel comes from math: noise, cells and color ramps. No AI, no uploads, everything runs in your browser.</p>
+  </header>
+
+  <main>
+    <section class="panel" aria-label="Settings">
+      <div class="group">
+        <h2>Select ratio</h2>
+        <div class="chips" id="ratios"></div>
+      </div>
+
+      <div class="group">
+        <h2>Output size</h2>
+        <div class="chips" id="scales"></div>
+      </div>
+
+      <div class="group">
+        <h2>Texture styles <button class="link" id="toggleAll" type="button">Select all</button></h2>
+        <div class="chips" id="styles"></div>
+      </div>
+
+      <div class="row">
+        <div class="group">
+          <h2>How many</h2>
+          <div class="chips" id="counts"></div>
+        </div>
+        <div class="group">
+          <h2>Seed</h2>
+          <div class="seed">
+            <input id="seed" type="number" inputmode="numeric" min="0" max="999999999">
+            <button id="dice" class="icon" type="button" title="Random seed" aria-label="Random seed">🎲</button>
+          </div>
+        </div>
+        <div class="group">
+          <h2>JPEG quality <span id="qv"></span></h2>
+          <input id="quality" type="range" min="80" max="100" value="95">
+        </div>
+      </div>
+
+      <button id="generate" class="cta" type="button"><span class="spinner" aria-hidden="true"></span><span class="label">BG GENERATE</span></button>
+      <div class="progress" id="progressWrap" hidden>
+        <div class="bar"><i id="bar"></i></div>
+        <p id="status"></p>
+      </div>
+
+      <div class="actions" id="actions" hidden>
+        <button id="zip" type="button">⬇ Download all (ZIP)</button>
+        <button id="csvAdobe" type="button">Adobe Stock CSV</button>
+        <button id="csvShutter" type="button">Shutterstock CSV</button>
+        <button id="cancel" class="ghost" type="button">Cancel</button>
+      </div>
+    </section>
+
+    <section class="grid" id="grid" aria-live="polite"></section>
+  </main>
+
+  <footer>
+    <p>Same seed + same settings = same images, so you can regenerate any file later. Tip for stock sites: upload at full size, keep only the best ones, and write your own titles — the CSV is a starting point.</p>
+  </footer>
+
+  <script src="js/noise.js"></script>
+  <script src="js/textures.js"></script>
+  <script src="js/zip.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
