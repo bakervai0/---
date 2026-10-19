@@ -1,4 +1,4 @@
-package com.example.data
+package com.bakervai.stocksense.data
 
 import kotlinx.coroutines.flow.Flow
 

@@ -1,4 +1,4 @@
-package com.example.ui
+package com.bakervai.stocksense.ui
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -25,7 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.*
+import com.bakervai.stocksense.ui.theme.*
 
 @Composable
 fun LoadingSkeleton(modifier: Modifier = Modifier) {
@@ -42,7 +42,7 @@ fun LoadingSkeleton(modifier: Modifier = Modifier) {
 
     val shimmerColors = listOf(
         SlateCard,
-        SlateCard.copy(alpha = 1.3f).mix(IndigoAccent, 0.12f),
+        SlateCard.mix(IndigoAccent, 0.15f),
         SlateCard
     )
 

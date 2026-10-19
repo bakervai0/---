@@ -1,4 +1,4 @@
-package com.example.ui
+package com.bakervai.stocksense.ui
 
 enum class Language {
     EN, BN

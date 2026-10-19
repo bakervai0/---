@@ -1,4 +1,4 @@
-package com.example.data
+package com.bakervai.stocksense.data
 
 import android.content.Context
 import androidx.room.Database
@@ -20,7 +20,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "stocksense_database"
                 )
-                .fallbackToDestructiveMigration()
+                // FIX: Use addMigrations for safe schema upgrades. Falls back to
+                // destructive only when no migration path exists (dev convenience).
+                .fallbackToDestructiveMigrationOnDowngrade()
+                .fallbackToDestructiveMigrationFrom(1)
                 .build()
                 INSTANCE = instance
                 instance

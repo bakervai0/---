@@ -1,4 +1,4 @@
-package com.example.data
+package com.bakervai.stocksense.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

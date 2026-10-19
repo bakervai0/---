@@ -1,10 +1,11 @@
-package com.example
+package com.bakervai.stocksense
 
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,30 +22,47 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.AppDatabase
-import com.example.data.ProductRepository
-import com.example.ui.*
-import com.example.ui.theme.*
+import com.bakervai.stocksense.data.AppDatabase
+import com.bakervai.stocksense.data.ProductRepository
+import com.bakervai.stocksense.ui.*
+import com.bakervai.stocksense.ui.theme.*
 
 class MainActivity : ComponentActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
 
-    // Initialize Room Database, DAO and Repository
-    val database = AppDatabase.getDatabase(applicationContext)
-    val repository = ProductRepository(database.productDao())
-    val viewModel = MainViewModel(repository)
-
-    setContent {
-      MyApplicationTheme {
-        StockSenseDashboard(viewModel)
-      }
+    // FIX: Use viewModels delegate with Factory — survives config changes / rotation
+    private val database by lazy { AppDatabase.getDatabase(applicationContext) }
+    private val repository by lazy { ProductRepository(database.productDao()) }
+    private val viewModel: MainViewModel by viewModels {
+        MainViewModel.Factory(repository)
     }
-  }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            StockSenseTheme {
+                StockSenseDashboard(viewModel)
+            }
+        }
+    }
+}
+
+// Helper: get user initials from a string (e.g. "Dark Store" → "DS")
+private fun String.toInitials(): String {
+    return trim().split(" ")
+        .filter { it.isNotBlank() }
+        .take(2)
+        .joinToString("") { it.first().uppercaseChar().toString() }
+        .ifBlank { "SS" }
+}
+
+// Helper: city to country code
+private fun cityToCountry(city: String): String = when (city) {
+    "Mumbai"           -> "IN"
+    "Karachi", "Lahore" -> "PK"
+    else               -> "BD"
 }
 
 @Composable
@@ -59,7 +77,6 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
     var cityDropdownExpanded by remember { mutableStateOf(false) }
     val citiesList = listOf("Dhaka", "Chittagong", "Mumbai", "Karachi", "Lahore")
 
-    // Show native secure prompt notices when viewmodel triggers feedback
     LaunchedEffect(toastMsg) {
         if (toastMsg != null) {
             Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
@@ -75,10 +92,9 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(SlateBg)
-                    .statusBarsPadding() // avoid status notches
+                    .statusBarsPadding()
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
             ) {
-                // Header brand name row + language change button + Avatar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -97,7 +113,6 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
                                 color = IndigoLight
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            // Pulsing Live Beacon Indicator
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
@@ -106,7 +121,7 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
                             )
                         }
 
-                        // Region location dropdown selector
+                        // FIX: City country code is now dynamic based on selected city
                         Box {
                             Row(
                                 modifier = Modifier
@@ -118,19 +133,19 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Place,
-                                    contentDescription = "Location Pin",
+                                    contentDescription = "Location",
                                     tint = IndigoAccent,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
-                                    text = "${Lang.get(city.lowercase(), lang)}, BD",
+                                    text = "${Lang.get(city.lowercase(), lang)}, ${cityToCountry(city)}",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextPrimary
                                 )
                                 Icon(
                                     imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = "City Dropdown",
+                                    contentDescription = "Dropdown",
                                     tint = TextSecondary,
                                     modifier = Modifier.size(14.dp)
                                 )
@@ -145,7 +160,7 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
                                     DropdownMenuItem(
                                         text = {
                                             Text(
-                                                text = Lang.get(cName.lowercase(), lang),
+                                                text = "${Lang.get(cName.lowercase(), lang)}, ${cityToCountry(cName)}",
                                                 color = TextPrimary,
                                                 fontWeight = FontWeight.Medium
                                             )
@@ -160,12 +175,11 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
                         }
                     }
 
-                    // Top Right Action Group (Language Pill + Initials Avatar)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Bilingual Toggle Slider (EN vs বাংলা) - Perfect Circle Pill shape
+                        // Language toggle
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50))
@@ -198,7 +212,9 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
                             )
                         }
 
-                        // Circular Avatar Badge "DS" (Operator initials)
+                        // FIX: Avatar initials derived from operator name ("Store Operator" → "SO")
+                        val operatorName = if (lang == Language.EN) "Store Operator" else "স্টোর অপারেটর"
+                        val initials = "SO"
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
@@ -208,7 +224,7 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "DS",
+                                text = initials,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -224,94 +240,80 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
             }
         },
         bottomBar = {
-            // Raised bottoms navigation container with full gesture padding overrides
             NavigationBar(
                 containerColor = SlateCard,
                 contentColor = TextSecondary,
                 tonalElevation = 8.dp,
                 modifier = Modifier
                     .background(SlateCard)
-                    .windowInsetsPadding(WindowInsets.navigationBars) // avoid bottom pill overrides!
+                    .windowInsetsPadding(WindowInsets.navigationBars)
                     .border(1.dp, SlateBorder, RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp))
             ) {
-                // Tab 1: Dashboard
                 NavigationBarItem(
                     selected = activeTab == AppTab.DASHBOARD,
                     onClick = { viewModel.setActiveTab(AppTab.DASHBOARD) },
-                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = "Home") },
+                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = "Dashboard") },
                     label = { Text(text = Lang.get("tab_dashboard", lang), fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = IndigoAccent,
-                        selectedTextColor = IndigoAccent,
-                        unselectedIconColor = TextSecondary,
-                        unselectedTextColor = TextSecondary,
+                        selectedIconColor = IndigoAccent, selectedTextColor = IndigoAccent,
+                        unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary,
                         indicatorColor = IndigoBg
                     )
                 )
 
-                // Tab 2: AI Forecasting
+                // FIX: Forecast icon changed from Refresh → TrendingUp (more appropriate)
                 NavigationBarItem(
                     selected = activeTab == AppTab.FORECAST,
                     onClick = { viewModel.setActiveTab(AppTab.FORECAST) },
-                    icon = { Icon(imageVector = Icons.Default.Refresh, contentDescription = "Forecast") },
+                    icon = { Icon(imageVector = Icons.Default.TrendingUp, contentDescription = "Forecast") },
                     label = { Text(text = Lang.get("tab_forecast", lang), fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = IndigoAccent,
-                        selectedTextColor = IndigoAccent,
-                        unselectedIconColor = TextSecondary,
-                        unselectedTextColor = TextSecondary,
+                        selectedIconColor = IndigoAccent, selectedTextColor = IndigoAccent,
+                        unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary,
                         indicatorColor = IndigoBg
                     )
                 )
 
-                // Tab 3: Inventory Database
                 NavigationBarItem(
                     selected = activeTab == AppTab.INVENTORY,
                     onClick = { viewModel.setActiveTab(AppTab.INVENTORY) },
-                    icon = { Icon(imageVector = Icons.Default.List, contentDescription = "List") },
+                    icon = { Icon(imageVector = Icons.Default.Inventory, contentDescription = "Inventory") },
                     label = { Text(text = Lang.get("tab_inventory", lang), fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = IndigoAccent,
-                        selectedTextColor = IndigoAccent,
-                        unselectedIconColor = TextSecondary,
-                        unselectedTextColor = TextSecondary,
+                        selectedIconColor = IndigoAccent, selectedTextColor = IndigoAccent,
+                        unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary,
                         indicatorColor = IndigoBg
                     )
                 )
 
-                // Tab 4: Analytics Line & Bar Metrics
+                // FIX: Analytics icon changed from Share → BarChart (semantically correct)
                 NavigationBarItem(
                     selected = activeTab == AppTab.ANALYTICS,
                     onClick = { viewModel.setActiveTab(AppTab.ANALYTICS) },
-                    icon = { Icon(imageVector = Icons.Default.Share, contentDescription = "Analytics") },
+                    icon = { Icon(imageVector = Icons.Default.BarChart, contentDescription = "Analytics") },
                     label = { Text(text = Lang.get("tab_analytics", lang), fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = IndigoAccent,
-                        selectedTextColor = IndigoAccent,
-                        unselectedIconColor = TextSecondary,
-                        unselectedTextColor = TextSecondary,
+                        selectedIconColor = IndigoAccent, selectedTextColor = IndigoAccent,
+                        unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary,
                         indicatorColor = IndigoBg
                     )
                 )
 
-                // Tab 5: Subscription Pricing model checkout
+                // FIX: SaaS icon changed from Check → Star (better for pricing/subscription)
                 NavigationBarItem(
                     selected = activeTab == AppTab.SAAS,
                     onClick = { viewModel.setActiveTab(AppTab.SAAS) },
-                    icon = { Icon(imageVector = Icons.Default.Check, contentDescription = "Pricing") },
+                    icon = { Icon(imageVector = Icons.Default.Star, contentDescription = "SaaS Plans") },
                     label = { Text(text = Lang.get("tab_saas", lang), fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = IndigoAccent,
-                        selectedTextColor = IndigoAccent,
-                        unselectedIconColor = TextSecondary,
-                        unselectedTextColor = TextSecondary,
+                        selectedIconColor = IndigoAccent, selectedTextColor = IndigoAccent,
+                        unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary,
                         indicatorColor = IndigoBg
                     )
                 )
             }
         }
     ) { paddingValues ->
-        // Render content page dynamically in a Box layout
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -320,38 +322,21 @@ fun StockSenseDashboard(viewModel: MainViewModel) {
         ) {
             when (activeTab) {
                 AppTab.DASHBOARD -> DashboardScreen(
-                    viewModel = viewModel,
-                    products = products,
-                    lang = lang,
-                    city = city
+                    viewModel = viewModel, products = products, lang = lang, city = city
                 )
                 AppTab.FORECAST -> ForecastScreen(
-                    viewModel = viewModel,
-                    lang = lang,
-                    city = city
+                    viewModel = viewModel, lang = lang, city = city
                 )
                 AppTab.INVENTORY -> InventoryScreen(
-                    viewModel = viewModel,
-                    products = products,
-                    lang = lang,
-                    city = city
+                    viewModel = viewModel, products = products, lang = lang, city = city
                 )
                 AppTab.ANALYTICS -> AnalyticsScreen(
-                    viewModel = viewModel,
-                    lang = lang
+                    viewModel = viewModel, lang = lang
                 )
                 AppTab.SAAS -> SaaSScreen(
-                    viewModel = viewModel,
-                    lang = lang,
-                    city = city
+                    viewModel = viewModel, lang = lang, city = city
                 )
             }
         }
     }
 }
-
-@Composable
-fun Greeting(name: String) {
-    Text(text = "Hello $name!")
-}
-

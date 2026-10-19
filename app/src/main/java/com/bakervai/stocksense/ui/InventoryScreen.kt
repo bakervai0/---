@@ -1,4 +1,4 @@
-package com.example.ui
+package com.bakervai.stocksense.ui
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -23,8 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.Product
-import com.example.ui.theme.*
+import com.bakervai.stocksense.data.Product
+import com.bakervai.stocksense.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit

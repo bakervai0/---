@@ -1,4 +1,4 @@
-package com.example.ui.theme
+package com.bakervai.stocksense.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -21,7 +21,7 @@ private val StockSenseColorScheme = darkColorScheme(
 )
 
 @Composable
-fun MyApplicationTheme(
+fun StockSenseTheme(
     darkTheme: Boolean = true, // Force Dark theme for the premium Dark store vibe
     dynamicColor: Boolean = false, // Disable dynamic colors so our SaaS branding remains persistent
     content: @Composable () -> Unit

@@ -1,4 +1,4 @@
-package com.example.ui
+package com.bakervai.stocksense.ui
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.*
+import com.bakervai.stocksense.ui.theme.*
 
 @Composable
 fun ForecastScreen(
@@ -275,6 +275,21 @@ fun ForecastScreen(
                                     .padding(14.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                // AI source badge
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(if (forecast.isFromAI) AccentGreen.copy(alpha = 0.2f) else AccentYellow.copy(alpha = 0.2f))
+                                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = if (forecast.isFromAI) "✦ GEMINI AI" else "◈ SMART ESTIMATE",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (forecast.isFromAI) AccentGreen else AccentYellow
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = if (lang == Language.EN) "RECOMMENDED OPTIMAL STOCK" else "সুপারিশকৃত সর্বোত্তম মজুদ",
                                     fontSize = 11.sp,

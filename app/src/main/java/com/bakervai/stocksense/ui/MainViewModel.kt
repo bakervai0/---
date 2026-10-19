@@ -1,19 +1,20 @@
-package com.example.ui
+package com.bakervai.stocksense.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.data.Product
-import com.example.data.ProductRepository
+import com.bakervai.stocksense.data.GeminiService
+import com.bakervai.stocksense.data.Product
+import com.bakervai.stocksense.data.ProductRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 enum class AppTab {
     DASHBOARD, FORECAST, INVENTORY, ANALYTICS, SAAS
@@ -62,13 +63,14 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
         val recommendedUnits: Int,
         val explanationEn: String,
         val explanationBn: String,
-        val confidenceScore: Int
+        val confidenceScore: Int,
+        val isFromAI: Boolean = false
     )
 
     private val _activeForecast = MutableStateFlow<ForecastResult?>(null)
     val activeForecast: StateFlow<ForecastResult?> = _activeForecast.asStateFlow()
 
-    // Smart alerts list (can be custom models, editable in ViewModel so users can "Approve" or "Dismiss" them)
+    // Smart alerts list
     data class SmartAlert(
         val id: Int,
         val type: String, // "WET", "FESTIVAL", "EXPIRY"
@@ -77,14 +79,14 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
         val descEn: String,
         val descBn: String,
         val targetSku: String,
-        val actionValue: Int, // reorder boost percentage or discount
+        val actionValue: Int, // reorder boost or discount %
         val isApplied: Boolean = false
     )
 
     private val _smartAlerts = MutableStateFlow<List<SmartAlert>>(emptyList())
     val smartAlerts: StateFlow<List<SmartAlert>> = _smartAlerts.asStateFlow()
 
-    // Subscription Billing selection
+    // Subscription billing selection
     private val _billingModalVisible = MutableStateFlow(false)
     val billingModalVisible: StateFlow<Boolean> = _billingModalVisible.asStateFlow()
 
@@ -98,7 +100,7 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
     private val _isGeneratingPdf = MutableStateFlow(false)
     val isGeneratingPdf: StateFlow<Boolean> = _isGeneratingPdf.asStateFlow()
 
-    // UI feedback toast/snack message state
+    // UI feedback toast message state
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
@@ -111,12 +113,11 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
         )
 
     init {
-        // Prepopulate database if empty and initialize standard alerts
+        // FIX: Use first() to only check once — prevents infinite loop from collect{}
         viewModelScope.launch {
-            repository.allProducts.collect { list ->
-                if (list.isEmpty()) {
-                    seedDatabase()
-                }
+            val list = repository.allProducts.first()
+            if (list.isEmpty()) {
+                seedDatabase()
             }
         }
         resetAlerts()
@@ -132,14 +133,14 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
                 currentStock = 240,
                 reorderPoint = 100,
                 price = 85.0,
-                expiryDate = today.plusDays(2).toString() // Expiring in 2 days (Trigger warning!)
+                expiryDate = today.plusDays(2).toString() // Expiring in 2 days → triggers EXPIRY alert
             ),
             Product(
                 sku = "PRD-SEMAI-202",
                 name = "Lacha Semai Classic",
                 category = "Grocery",
                 currentStock = 120,
-                reorderPoint = 350, // Low stock for upcoming Eid spike!
+                reorderPoint = 350, // Below threshold → Eid festival demand spike
                 price = 145.0,
                 expiryDate = today.plusDays(45).toString()
             ),
@@ -148,7 +149,7 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
                 name = "Ispahani Premium Blend Tea",
                 category = "Beverages",
                 currentStock = 85,
-                reorderPoint = 150, // Below threshold
+                reorderPoint = 150, // Below threshold → rain demand spike
                 price = 220.0,
                 expiryDate = today.plusDays(200).toString()
             ),
@@ -182,7 +183,7 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
                 titleEn = "Heavy Rain expected tomorrow!",
                 titleBn = "আগামীকাল ভারী বৃষ্টির সম্ভাবনা!",
                 descEn = "A rain system will hit your area. Increase Tea, Noodles, and Umbrella stock to meet delivery surges.",
-                descBn = "আপনার এলাকায় বৃষ্টির সম্ভাবনা রয়েছে। ডেলিভারি বৃদ্ধির সাথে চা, নুডলস এবং ছাতা স্টক বাড়িয়ে রাখুন।",
+                descBn = "আপনার এলাকায় বৃষ্টির সম্ভাবনা রয়েছে। ডেলিভারি বৃদ্ধির সাথে চা, নুডলস এবং ছাতা স্টক বাড়িয়ে রাখুন।",
                 targetSku = "PRD-TEA-303",
                 actionValue = 40
             ),
@@ -190,9 +191,9 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
                 id = 2,
                 type = "FESTIVAL",
                 titleEn = "Major Festive Event in 3 days!",
-                titleBn = "৩ দিন পর বড় উৎসবের দিন!",
+                titleBn = "৩ দিন পর বড় উৎসবের দিন!",
                 descEn = "Eid Shopping peaks soon. Double up Semai, Vermicelli, Sugars, and Attar items to maximize quick commerce trade.",
-                descBn = "ঈদের কেনাকাটা তুঙ্গে উঠছে। কুইক কমার্স বেচাকেনা বাড়াতে সেমাই, চিনি এবং আতর স্টক দ্বিগুণ করুন।",
+                descBn = "ঈদের কেনাকাটা তুঙ্গে উঠছে। কুইক কমার্স বেচাকেনা বাড়াতে সেমাই, চিনি এবং আতর স্টক দ্বিগুণ করুন।",
                 targetSku = "PRD-SEMAI-202",
                 actionValue = 300
             ),
@@ -200,114 +201,70 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
                 id = 3,
                 type = "EXPIRY",
                 titleEn = "Critical Expiry Alert!",
-                titleBn = "মেয়াদ উত্তীর্ণের জরুরি সতর্কীকরণ!",
+                titleBn = "মেয়াদ উত্তীর্ণের জরুরি সতর্কীকরণ!",
                 descEn = "Deshi Fresh Tomato stock (120 extra units) is expiring in 2 days. Launch a 30% discount to avoid total waste.",
-                descBn = "দেশি ফ্রেশ টমেটো স্টক (১২০ অতিরিক্ত ইউনিট) ২ দিনে মেয়াদ শেষ হবে। অপচয় রোধে এখনই ৩০% ডিসকাউন্ট চালু করুন।",
+                descBn = "দেশি ফ্রেশ টমেটো স্টক (১২০ অতিরিক্ত ইউনিট) ২ দিনে মেয়াদ শেষ হবে। অপচয় রোধে এখনই ৩০% ডিসকাউন্ট চালু করুন।",
                 targetSku = "PRD-TOMATO-101",
                 actionValue = 30
             )
         )
     }
 
-    fun setLanguage(lang: Language) {
-        _language.value = lang
-    }
+    fun setLanguage(lang: Language) { _language.value = lang }
+    fun setActiveTab(tab: AppTab) { _activeTab.value = tab }
+    fun setSelectedCity(city: String) { _selectedCity.value = city }
+    fun setSearchQuery(query: String) { _searchQuery.value = query }
+    fun showAddProductDialog(show: Boolean) { _isAddDialogVisible.value = show }
+    fun setEditingProduct(product: Product?) { _editingProduct.value = product }
+    fun setForecastCategory(cat: String) { _forecastCategory.value = cat }
+    fun setForecastZone(zone: String) { _forecastZone.value = zone }
+    fun setForecastRange(range: String) { _forecastRange.value = range }
 
-    fun setActiveTab(tab: AppTab) {
-        _activeTab.value = tab
-    }
-
-    fun setSelectedCity(city: String) {
-        _selectedCity.value = city
-    }
-
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
-
-    // Toggle dialog visibility
-    fun showAddProductDialog(show: Boolean) {
-        _isAddDialogVisible.value = show
-    }
-
-    fun setEditingProduct(product: Product?) {
-        _editingProduct.value = product
-    }
-
-    // AI Forecast inputs
-    fun setForecastCategory(cat: String) {
-        _forecastCategory.value = cat
-    }
-
-    fun setForecastZone(zone: String) {
-        _forecastZone.value = zone
-    }
-
-    fun setForecastRange(range: String) {
-        _forecastRange.value = range
-    }
-
-    // Run dynamic forecast with delay
+    /** Real Gemini AI forecast — calls GeminiService with live inventory context. */
     fun generateForecast() {
         viewModelScope.launch {
             _isForecastLoading.value = true
             _activeForecast.value = null
-            // Simulate AI crunching latency of 2.5 seconds
-            delay(2500)
 
             val category = _forecastCategory.value
             val city = _selectedCity.value
             val range = _forecastRange.value
+            val products = productsList.value
 
-            val units = when (category) {
-                "Fresh Produce" -> 280
-                "Grocery" -> 420
-                "Beverages" -> 310
-                "Essentials" -> 640
-                else -> 150
-            }
+            // Build inventory context from real DB data
+            val lowStockSkus = products
+                .filter { it.currentStock <= it.reorderPoint }
+                .map { it.sku }
 
-            val confidence = (82..97).random()
+            val today = LocalDate.now()
+            val expiringSkus = products
+                .filter {
+                    try {
+                        val exp = LocalDate.parse(it.expiryDate)
+                        !exp.isBefore(today) && !exp.isAfter(today.plusDays(3))
+                    } catch (e: Exception) { false }
+                }
+                .map { it.sku }
 
-            // Construct smart localized explanations based on input configurations
-            val (expEn, expBn) = when {
-                category == "Fresh Produce" -> {
-                    Pair(
-                        "Fresh Greens and Tomatoes have a high demand spike in $city because local supply lanes are bottlenecked by heavy morning forecasts.",
-                        "সকালের ভারী বৃষ্টিপাতের কারণে স্থানীয় সরবরাহ বিঘ্নিত হওয়ায় $city-তে শাকসবজি ও টমেটোর উচ্চ চাহিদা দেখা দেবে।"
-                    )
-                }
-                category == "Beverages" -> {
-                    Pair(
-                        "Cold storms or tea cycles predicted for mid-week in $city are pushing daily hot-tea demand of premium blends up by 55%.",
-                        "সপ্তাহের মাঝামাঝি সময়ে $city-তে বৃষ্টিপাতের কারণে প্রিমিয়াম চা ও গরম পানীয়র চাহিদা ৫৫% বেশি থাকবে।"
-                    )
-                }
-                category == "Grocery" -> {
-                    Pair(
-                        "Upcoming festive calendar days are shifting grocery baking components demand by 300% across central delivery zones in $city.",
-                        "আসন্ন উৎসবের দিনগুলোর কারণে $city-এর কেন্দ্রীয় হাবগুলোতে প্রসাধন সামগ্রী ও গুড়ো সেমাইয়ের বেচাকেনা ৩০০% বৃদ্ধি পাবে।"
-                    )
-                }
-                else -> {
-                    Pair(
-                        "Weekly cyclical stocking is peaking, and day-of-week demand models for $category indicate healthy consumer traction in $city hubs.",
-                        "সাপ্তাহিক স্টক চক্রটি তুঙ্গে রয়েছে, এবং $category এর সাপ্তাহিক চাহিদা বিশ্লেষণ অনুযায়ী $city পয়েন্টে দারুণ অগ্রগতি দেখা যাচ্ছে।"
-                    )
-                }
-            }
+            val result = GeminiService.generateForecast(
+                category = category,
+                city = city,
+                period = range,
+                lowStockSkus = lowStockSkus,
+                expiringSkus = expiringSkus
+            )
 
             _activeForecast.value = ForecastResult(
-                recommendedUnits = units,
-                explanationEn = expEn,
-                explanationBn = expBn,
-                confidenceScore = confidence
+                recommendedUnits = result.recommendedUnits,
+                explanationEn = result.explanationEn,
+                explanationBn = result.explanationBn,
+                confidenceScore = result.confidenceScore,
+                isFromAI = result.isFromAI
             )
             _isForecastLoading.value = false
         }
     }
 
-    // Add normal product
     fun addProduct(sku: String, name: String, category: String, stock: Int, reorder: Int, price: Double, expiry: String) {
         viewModelScope.launch {
             val prod = Product(sku = sku, name = name, category = category, currentStock = stock, reorderPoint = reorder, price = price, expiryDate = expiry)
@@ -316,7 +273,6 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
         }
     }
 
-    // Update normal product
     fun updateProduct(prod: Product) {
         viewModelScope.launch {
             repository.update(prod)
@@ -324,7 +280,6 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
         }
     }
 
-    // Delete product
     fun deleteProduct(prod: Product) {
         viewModelScope.launch {
             repository.delete(prod)
@@ -332,37 +287,20 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
         }
     }
 
-    // One-click alert approvals (affects the Database!)
+    /** FIX: Alert approval uses alert.targetSku dynamically — no more hardcoded SKU. */
     fun approveSmartAlert(alertId: Int) {
         viewModelScope.launch {
             val alertList = _smartAlerts.value.map { alert ->
                 if (alert.id == alertId) {
-                    // Execute stock increments on database reactively!
-                    val matchingSku = alert.targetSku
-                    val originalProduct = productsList.value.find { it.sku == matchingSku }
-                    if (originalProduct != null) {
-                        val increasePercentage = alert.actionValue
-                        val addUnits = when (alert.type) {
-                            "WET" -> 50 // rain boost tea: +50 units
-                            "FESTIVAL" -> 250 // Eid boost semai: +250 units
-                            else -> 0
+                    val targetProduct = productsList.value.find { it.sku == alert.targetSku }
+                    if (targetProduct != null) {
+                        val updatedProduct = when (alert.type) {
+                            "WET"      -> targetProduct.copy(currentStock = targetProduct.currentStock + 50)
+                            "FESTIVAL" -> targetProduct.copy(currentStock = targetProduct.currentStock + 250)
+                            "EXPIRY"   -> targetProduct.copy(price = targetProduct.price * 0.70) // 30% discount
+                            else       -> targetProduct
                         }
-
-                        if (addUnits > 0) {
-                            val updatedProduct = originalProduct.copy(
-                                currentStock = originalProduct.currentStock + addUnits
-                            )
-                            repository.update(updatedProduct)
-                        }
-                    } else if (alert.type == "EXPIRY") {
-                        // Apply tomatoes 30% discount directly in Room database!
-                        val tomatoProd = productsList.value.find { it.sku == "PRD-TOMATO-101" }
-                        if (tomatoProd != null) {
-                            val updatedTomato = tomatoProd.copy(
-                                price = (tomatoProd.price * 0.70)
-                            )
-                            repository.update(updatedTomato)
-                        }
+                        repository.update(updatedProduct)
                     }
                     alert.copy(isApplied = true)
                 } else alert
@@ -382,25 +320,21 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
         _billingModalVisible.value = true
     }
 
-    fun hideBillingModal() {
-        _billingModalVisible.value = false
-    }
+    fun hideBillingModal() { _billingModalVisible.value = false }
 
-    fun selectPaymentMethod(method: String) {
-        _selectedPaymentMethod.value = method
-    }
+    fun selectPaymentMethod(method: String) { _selectedPaymentMethod.value = method }
 
     fun executePayment() {
         viewModelScope.launch {
             _billingModalVisible.value = false
-            showToastMessage("Subscription to ${_selectedPlanName.value} successful! Gateway authorized via ${_selectedPaymentMethod.value}.")
+            showToastMessage("Subscription to ${_selectedPlanName.value} successful! Payment authorized via ${_selectedPaymentMethod.value}.")
         }
     }
 
     fun triggerPdfExport() {
         viewModelScope.launch {
             _isGeneratingPdf.value = true
-            delay(2000) // Simulate PDF compiling
+            delay(2000) // Simulate PDF generation
             _isGeneratingPdf.value = false
             showToastMessage("Audit Report (PDF) successfully generated and shared!")
         }
@@ -422,7 +356,7 @@ class MainViewModel(private val repository: ProductRepository) : ViewModel() {
                 @Suppress("UNCHECKED_CAST")
                 return MainViewModel(repository) as T
             }
-            throw IllegalArgumentException("Unknown ViewModel class")
+            throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }
 }
